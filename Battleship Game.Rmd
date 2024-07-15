@@ -1,0 +1,271 @@
+---
+title: "Battleship Game"
+author: "KN Mnisi"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Packages
+```{r}
+library(sampling)
+```
+Set up game board dimensions
+```{r}
+board_size <- 10
+num_ships <- 5
+ship_lengths <- c(5, 4, 3, 3, 2)
+num_games <- 20
+```
+
+Function to Create empty game boards
+```{r}
+#for (i in 1:num_games) {
+createBoard <- function(){
+col_names <- c("1","2","3","4","5","6","7","8","9","10")
+row_names <- c("A","B","C","D","E","F","G","H","I","J")
+board <- matrix(rep(0, board_size^2), nrow = board_size)
+rownames(board) <- row_names
+colnames(board) <- col_names
+return(board)
+}
+```
+Function to randomly place ships on a board without overlapping
+```{r}
+place_ships <- function(board, ship_lengths) {
+  for (ship_length in ship_lengths) {
+    ship_placed <- FALSE
+    while (!ship_placed) {
+      row_start <- sample(1:nrow(board), 1)
+      col_start <- sample(1:ncol(board), 1)
+      direction <- sample(c("horizontal", "vertical"), 1)
+      
+      # Check that ship doesn't overlap with edges of board
+      if (direction == "horizontal" &&
+          col_start + ship_length - 1 <= ncol(board) &&
+          all(board[row_start, col_start:(col_start + ship_length - 1)] == 0)) {
+        board[row_start, col_start:(col_start + ship_length - 1)] <- 1
+        ship_placed <- TRUE
+      } else if (direction == "vertical" &&
+                 row_start + ship_length - 1 <= nrow(board) &&
+                 all(board[row_start:(row_start + ship_length - 1), col_start] == 0)) {
+        board[row_start:(row_start + ship_length - 1), col_start] <- 1
+        ship_placed <- TRUE
+      }
+      
+      if (direction == "horizontal" &&
+          col_start + ship_length - 1 <= ncol(board) &&
+          all(board[row_start, col_start:(col_start + ship_length - 1)] == 0)) {
+        board[row_start, col_start:(col_start + ship_length - 1)] <- 1
+        ship_placed <- TRUE
+      } else if (direction == "vertical" &&
+                 row_start + ship_length - 1 <= nrow(board) &&
+                 all(board[row_start:(row_start + ship_length - 1), col_start] == 0)) {
+        board[row_start:(row_start + ship_length - 1), col_start] <- 1
+        ship_placed <- TRUE
+      }
+    }
+  }
+  return(board)
+}
+```
+Function to display a board
+```{r}
+display_board <- function(board) {
+  board_display <- board
+  board_display[board_display == 1] <- 0 # Hide ships
+  board_display[board_display == 2] <- "X" # Show hits
+  board_display[board_display == 3] <- "O" # Show misses
+  print(board_display)
+}
+```
+Function to check if a shot hits a ship
+```{r}
+check_shot <- function(opponentBoard, row, col) {
+  if (opponentBoard[row, col] == 1) {
+    cat("Hit!!!\n")
+    opponentBoard[row, col] <- 2 # Mark hit
+  } else {
+    cat("Missed!!!\n")
+    opponentBoard[row, col] <- 3 # Mark miss
+  }
+  return(opponentBoard)
+}
+```
+Function to check if a player has won
+```{r}
+checkWin <- function(opponentBoard) {
+  if (1 %in% opponentBoard) {
+    return(FALSE)
+  } else {
+    return(TRUE)
+  }
+}
+```
+Function to play the game
+```{r}
+playGame <- function() {
+  # Initialize the number of wins
+  num_wins_player1 <- 0
+  num_wins_player2 <- 0
+  shots_taken_in_round <- 0
+  
+  # Initialize sets to track shots taken by each player
+  shots_taken_by_player1 <- list()
+  shots_taken_by_player2 <- list()
+  
+  # Display the initial game boards
+  cat("Player 1 Board:\n")
+  display_board(my_board)
+  cat("Player 2 Board:\n")
+  display_board(opp_board)
+  
+  # Start the game
+  currentPlayer <- 1
+  winner <- NULL
+  repeat {
+    if (currentPlayer == 1) {
+      cat("Player 1's turn:\n")
+      targetBoard <- opp_board
+      shots_taken <- shots_taken_by_player1
+    } else {
+      cat("Player 2's turn:\n")
+      targetBoard <- my_board
+      shots_taken <- shots_taken_by_player2
+    }
+    
+    # Take a random shot
+    repeat {
+      row <- sample(LETTERS[1:10], 1)
+      col <- sample(1:10, 1)
+      shot <- paste(row, col, sep = "")
+      
+      # Check if the shot has already been taken
+      if (!(shot %in% shots_taken)) {
+        shots_taken <- c(shots_taken, shot)
+        break
+      }
+    }
+    cat("Shot taken at: ", shot, "\n")
+    shots_taken_in_round <- shots_taken_in_round + 1
+    
+    # Check if the shot hit or missed
+    opp_shot <- check_shot(targetBoard, row, col)
+
+    
+    # Check if the current player has won
+    if (checkWin(opp_shot)) {
+      if (currentPlayer == 1) {
+        cat("Player", currentPlayer, "WON!!!!\n")
+        opponent <- 3 - currentPlayer
+        cat("Player's", opponent, "Board\n")
+        display_board(opp_shot)
+        cat("Shots Taken by Player", currentPlayer, ":", round((shots_taken_in_round/2),0), "\n")
+        num_wins_player1 <- num_wins_player1 + 1
+        winner <- "Player 1"
+      } else {
+        cat("Player", currentPlayer, "WON!!!!\n")
+        opponent <- 3 - currentPlayer
+        cat("Player's", opponent, "Board\n")
+        display_board(opp_shot)
+        cat("Shots Taken by Player",currentPlayer ,":", round((shots_taken_in_round/2),0), "\n")
+        num_wins_player2 <- num_wins_player2 + 1
+        winner <- "Player 2"
+      }
+      break
+    }
+    
+    # Check if the game is over
+    if (!1 %in% opp_shot) {
+      cat("Game over\n")
+      break
+    }
+    
+    # Update the respective player's board
+    if (currentPlayer == 1) {
+      opp_board <- opp_shot
+      shots_taken_by_player1 <- shots_taken
+    } else {
+      my_board <- opp_shot
+      shots_taken_by_player2 <- shots_taken
+    }
+    
+    
+    # Display the updated game board
+    opponent <- 3 - currentPlayer
+    cat("Player", opponent,"'s", "Board\n")
+    display_board(opp_shot)
+    
+    # Switch to the next player
+    currentPlayer <- 3 - currentPlayer
+  }
+    # Return number of wins for each player
+  return(list(player1 = num_wins_player1, player2 = num_wins_player2, shots_in_round= shots_taken_in_round, winner= winner))
+  
+}
+```
+
+Create empty game boards for player 1 and player 2
+```{r}
+# Initialize counters for total wins across all games
+total_wins_player1 <- 0
+total_wins_player2 <- 0
+
+# Initialize data frame to store game results
+game_results_random <- data.frame(
+  `Game Number` = integer(),
+  Winner = character(),
+  `Shots Taken By Winner` = integer(),
+  stringsAsFactors = FALSE
+)
+
+# Play the game 5 times
+for (game in 1:num_games) {
+  cat("\n===== Game", game, "=====\n")
+  # Play the game and get the results
+
+cat("My Board","\n")
+(my_board <- createBoard())
+
+cat("Opponent's Board","\n")
+(opp_board <- createBoard())
+
+#Place ships on the game boards
+
+cat("Player 1's Board","\n")
+(my_board <- place_ships(my_board, ship_lengths))
+cat("Player 2's Board","\n")
+(opp_board <- place_ships(opp_board, ship_lengths))
+
+
+
+# Play the game until either player wins
+
+  game_result <- playGame()
+
+  
+  # Store the results in the data frame
+  game_results_random <- rbind(game_results_random, data.frame(
+    `Game Number` = game,
+    Winner = game_result$winner,
+    `Shots Taken By Winner` = round((game_result$shots_in_round / 2), 0),
+    stringsAsFactors = FALSE
+  ))
+  
+  # Accumulate wins for each player across all games
+  total_wins_player1 <- total_wins_player1 + game_result$player1
+  total_wins_player2 <- total_wins_player2 + game_result$player2
+}
+
+```
+Print the number of wins
+```{r}
+# Print total wins for each player after all games
+cat("\n===== Total Wins =====\n")
+cat("Player 1 total wins:", total_wins_player1, "\n")
+cat("Player 2 total wins:", total_wins_player2, "\n")
+print(game_results_random)
+```
+
